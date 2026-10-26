@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ★ 只有這兩個 Google 帳號能讀寫帳本。請把第二個換成老婆的 Gmail（全部小寫）
+    function allowed() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'sspp0511@gmail.com',
+          '老婆的gmail@gmail.com'
+        ];
+    }
+    // 重送「一模一樣」的內容視為同一筆（網路不穩時重試不會重複，也不會改到舊資料）
+    function unchanged() { return request.resource.data == resource.data; }
+
+    // 帳目、結算單、付款、收款確認、身分、比例：只能新增，不能修改或刪除
+    match /entries/{id} {
+      allow read: if allowed();
+      allow create: if allowed()
+        && request.resource.data.amount is int
+        && request.resource.data.amount > 0
+        && request.resource.data.type in ['fund_expense','advance_family','contribution','income','private','reversal'];
+      allow update: if allowed() && unchanged();
+      allow delete: if false;
+    }
+    match /settlements/{id} {
+      allow read: if allowed();
+      allow create: if allowed();
+      allow update: if allowed() && unchanged();
+      allow delete: if false;
+    }
+    match /payments/{id} {
+      allow read: if allowed();
+      allow create: if allowed() && request.resource.data.amount is int && request.resource.data.amount > 0;
+      allow update: if allowed() && unchanged();
+      allow delete: if false;
+    }
+    match /confirms/{id} {
+      allow read: if allowed();
+      allow create: if allowed();
+      allow update: if allowed() && unchanged();
+      allow delete: if false;
+    }
+    match /members/{role} {
+      allow read: if allowed();
+      allow create: if allowed() && role in ['H','W'] && request.resource.data.uid == request.auth.uid;
+      allow update: if allowed() && unchanged();
+      allow delete: if false;
+    }
+    match /ratios/{id} {
+      allow read: if allowed();
+      allow create: if allowed();
+      allow update: if allowed() && unchanged();
+      allow delete: if false;
+    }
+
+    // 分類與設定（保管人）可以修改
+    match /categories/{id} {
+      allow read, create, update: if allowed();
+      allow delete: if false;
+    }
+    match /config/{id} {
+      allow read, create, update: if allowed();
+      allow delete: if false;
+    }
+  }
+}
