@@ -8,7 +8,7 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && request.auth.token.email.lower() in [
           'sspp0511@gmail.com',
-          '老婆的gmail@gmail.com'
+          'spa0180@gmail.com'
         ];
     }
     // 重送「一模一樣」的內容視為同一筆（網路不穩時重試不會重複，也不會改到舊資料）
