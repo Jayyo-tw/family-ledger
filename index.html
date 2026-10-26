@@ -600,7 +600,7 @@ function typeToForm(type,payer){
   if(type==='income')return{mode:'in',src:'ext'};
   return{mode:'in',src:payer};
 }
-function defaultSrc(mode){const me=S.role||'H';if(mode==='spend')return me===keeper()?'fund':me;if(mode==='gift')return me;return me}
+function defaultSrc(mode){const me=S.role||'H';if(mode==='spend')return me===keeper()?'fund':me;if(mode==='gift')return me;return keeper()}
 function startAdd(prefill){
   S.form=Object.assign({id:newId('e'),mode:'spend',src:defaultSrc('spend'),amt:'',cat:null,date:todayTPE(),note:'',replaces:null,reason:''},prefill||{});
   openSheet({kind:'add'});
@@ -613,13 +613,13 @@ function addSheet(){
   let q='',opts='';
   if(f.mode==='spend'){q='錢是誰付的？';opts=opt('fund','用公費付',`${ROLE[k]}保管的家用錢包`)+['H','W'].map(r=>opt(r,`${ROLE[r]}${me(r)}自己先付`,r===k?'之後從公費拿回來':'之後由公費還給'+ROLE[r])).join('')}
   else if(f.mode==='gift'){q='誰幫誰買？';opts=opt('H',`老公${me('H')}幫老婆買`,'老婆要還老公')+opt('W',`老婆${me('W')}幫老公買`,'老公要還老婆')}
-  else{q='錢從哪裡來？';const r=currentRatio();opts=['W','H'].map(x=>opt(x,`${ROLE[x]}${me(x)}放錢進公費`,`依比例 老公${r.H}%／老婆${r.W}%，${ROLE[other(x)]}分攤自己的份`)).join('')+opt('ext','補助、津貼、其他收入','只增加公費，不算夫妻帳')}
+  else{q='錢從哪裡來？';const r=currentRatio(),kp=k,ot=other(k);opts=opt(kp,`補公費（${ROLE[kp]}匯入）`,`例：補 10,000 → 公費 +10,000，${ROLE[ot]}的 ${r[ot]}%（8,000）記為${ROLE[ot]}欠${ROLE[kp]}`)+opt('ext','補助、津貼、其他收入','只增加公費，不算夫妻帳')}
   const cats=catList().filter(c=>!c.archived||c.name===f.cat);
   const orig=f.replaces&&S.entries.find(e=>e.id===f.replaces);
   return head(f.replaces?'更正紀錄':'記一筆')+`
   ${orig?`<div class="notice" style="margin-bottom:10px">原紀錄「${esc(orig.category||TYPES[orig.type].label)} ${money(orig.amount)}」會被沖銷並保留在紀錄中，再新增下面這筆正確的紀錄。${derive().settledIn[orig.id]?'原紀錄已出單，沖銷會歸入下一期。':''}</div>`:''}
   <div class="q">發生了什麼事？</div>
-  <div class="modes">${modeBtn('spend','家裡花錢','買菜、尿布、繳費')}${modeBtn('gift','幫對方買','對方私人的東西')}${modeBtn('in','錢進公費','補錢、補助津貼')}</div>
+  <div class="modes">${modeBtn('spend','家裡花錢','買菜、尿布、繳費')}${modeBtn('gift','幫對方買','對方私人的東西')}${modeBtn('in','錢進公費','補公費、補助津貼')}</div>
   <form id="addForm" novalidate>
   <div class="field"><label for="f-amt">金額</label><div class="amtbox"><span>NT$</span><input id="f-amt" inputmode="numeric" autocomplete="off" placeholder="輸入金額" value="${esc(f.amt)}"></div></div>
   <div class="q">${q}</div><div class="opts">${opts}</div>
