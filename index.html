@@ -895,6 +895,12 @@ document.addEventListener('change',ev=>{if(ev.target.id==='statKey'){S.statKey=e
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.sheet)closeSheet()});
 window.addEventListener('error',e=>toast('發生錯誤：'+(e.message||'未知')));
 window.addEventListener('unhandledrejection',e=>{const r=e.reason;toast('發生錯誤：'+((r&&(r.code||r.message))||'未知'))});
+/* ============ 自動更新：發現新版就換成新網址載入，避開手機暫存 ============ */
+const APP_VERSION='202610272045';
+async function checkUpdate(){try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+  if(j.v&&j.v!==APP_VERSION&&!S.sheet){location.replace(location.pathname+'?v='+j.v)}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
+setTimeout(checkUpdate,1500);
 boot();
 </script>
 </body>
