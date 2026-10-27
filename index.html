@@ -198,6 +198,14 @@ input[type="date"].inp::-webkit-date-and-time-value{text-align:left}
 .dotc{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;flex:none;vertical-align:middle}
 .dleg .dotc{margin-right:0}
 .bar{grid-template-columns:6.5em 1fr auto}
+.cattiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.cattiles button{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:10px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12.5px;color:var(--muted);min-width:0}
+.cattiles button span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cattiles .em{font-size:26px;line-height:1.1}
+.cattiles button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.iconpick{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.iconpick button{font-size:24px;padding:8px 0;border:1.5px solid var(--line);background:var(--surface);border-radius:12px}
+.iconpick button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
 </head>
@@ -323,8 +331,11 @@ function netObj(x){return x>0?{from:'H',to:'W',amount:x}:x<0?{from:'W',to:'H',am
 function netText(n){return n.amount?`${ROLE[n.from]} → ${ROLE[n.to]}`:'兩不相欠'}
 function currentRatio(){const r=[...S.ratios].sort((a,b)=>b.createdAt-a.createdAt)[0];return r?{H:r.H,W:r.W}:{...DEFAULT_RATIO}}
 const keeper=()=>S.config.keeper||'W';
+const CAT_ICON={'食物':'🍱','餐飲':'🍱','育兒':'🍼','家用':'🏠','居家':'🏠','交通':'🚗','玩樂':'🎉','娛樂':'🎉','醫療':'💊','醫療保健':'💊','購物':'🛍️','水電帳單':'💡','水電瓦斯':'💡','日用品':'🧻','保險':'🛡️','其他':'📦'};
+const ICON_CHOICES=['🍱','🍜','☕','🛒','🍼','👶','🧸','🏠','🧻','🧺','🚗','⛽','🚌','🎉','🎬','✈️','💊','🏥','🛍️','👕','💡','📱','🛡️','🎁','🐶','📚','💇','🏋️','💰','📦'];
+const catIcon=name=>{const c=catList().find(x=>x.name===name);return (c&&c.icon)||CAT_ICON[name]||'🏷️'};
 function catList(){const out=DEFAULT_CATS.map((n,i)=>({id:'c'+i,name:n,order:i,archived:false}));const map=Object.fromEntries(out.map(c=>[c.id,c]));
-  for(const[id,d]of Object.entries(S.catDocs)){map[id]={id,name:d.name,order:d.order??99,archived:!!d.archived}}return Object.values(map).sort((a,b)=>a.order-b.order)}
+  for(const[id,d]of Object.entries(S.catDocs)){map[id]={id,name:d.name,order:d.order??99,archived:!!d.archived,icon:d.icon||''}}return Object.values(map).map(c=>Object.assign(c,{icon:c.icon||CAT_ICON[c.name]||'🏷️'})).sort((a,b)=>a.order-b.order)}
 function payStatus(p){if(p.recordedBy===p.to)return'confirmed';return(S.confirms[p.id]&&S.confirms[p.id].status)||'pending'}
 
 function derive(){
@@ -441,7 +452,7 @@ function rowHTML(e,D){
   const st=entryStatus(e,D);
   let amt,cls='';
   if(f.fund){amt=sgn(f.fund);cls=f.fund>0?'pos':''}else{amt=(rev?'−':'')+fmt(e.amount)}
-  const title=rev?'更正沖銷：'+(e.category||T.label):(e.category||T.label);
+  const title=(e.category?catIcon(e.category)+' ':'')+(rev?'更正沖銷：'+(e.category||T.label):(e.category||T.label));
   const who=b==='fund_expense'?'公費付':b==='income'?'外部收入':ROLE[e.payer]+(b==='private'?'代墊':b==='contribution'?'補入':'先付');
   return `<button class="row ${voided?'voided':''}" data-act="entry" data-id="${esc(e.id)}"><div class="main"><div class="t">${esc(title)}${e.note&&!rev?`<span class="hint">　${esc(e.note)}</span>`:''}</div>
     <div class="s"><span class="tag ${T.scope}">${T.scope==='fund'?'公費':'私人'}</span><span>${esc(T.label)}</span><span>· ${esc(who)}</span>${voided?'<span class="chip rev">已更正</span>':''}</div></div>
@@ -554,7 +565,7 @@ function statsView(){
   <section class="card"><h3>${label(S.statKey)}家庭支出</h3><div class="owe-main"><span class="num" style="font-size:28px">${money(total)}</span></div>
    <div class="hint">含公費支出與代墊家庭支出，已扣除更正。</div>
    ${cats.length?donut(cats,total):''}
-   <div style="margin-top:10px">${cats.length?cats.map(([c,v],i)=>`<div class="bar"><span class="lab"><i class="dotc" style="background:${PIE[i%PIE.length]}"></i>${esc(c)}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(0,v)/max*100}%;background:${PIE[i%PIE.length]}"></span></span><span class="num">${pct(v,total)}・${fmt(v)}</span></div>`).join(''):'<div class="hint">這段期間沒有支出。</div>'}</div></section>
+   <div style="margin-top:10px">${cats.length?cats.map(([c,v],i)=>`<div class="bar"><span class="lab"><i class="dotc" style="background:${PIE[i%PIE.length]}"></i>${catIcon(c)} ${esc(c)}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(0,v)/max*100}%;background:${PIE[i%PIE.length]}"></span></span><span class="num">${pct(v,total)}・${fmt(v)}</span></div>`).join(''):'<div class="hint">這段期間沒有支出。</div>'}</div></section>
   ${monthly}
   <section class="card"><h3>公費進帳</h3><div class="kv"><span class="k">夫妻補入</span><span class="v num">${fmt(contrib)}</span></div><div class="kv"><span class="k">外部收入（補助、津貼）</span><span class="v num">${fmt(income)}</span></div></section></div>`;
 }
@@ -575,7 +586,7 @@ function settingsView(){
     ${hist.length?`<div style="margin-top:10px">${hist.map((h,i)=>`<div class="kv"><span class="k">${fmtTime(h.createdAt)}${i===0?'（目前）':''}</span><span class="v num">${h.H}% / ${h.W}%</span></div>`).join('')}</div>`:''}</section>
   <section class="card"><h3>公費保管人</h3><div class="kv"><span class="k">目前由</span><span class="v"><b>${ROLE[k]}</b>保管</span></div>
     <p class="hint" style="margin:4px 0 10px">保管人代墊家庭支出時，直接從公費取回，不列入夫妻轉帳。</p>${S.readOnly?'':'<button class="btn" data-act="keeperSheet">變更保管人</button>'}</section>
-  <section class="card"><h3>支出分類</h3><div class="list">${cats.map(c=>`<div class="row" style="cursor:default"><div class="main"><div class="t" style="${c.archived?'opacity:.5':''}">${esc(c.name)}${c.archived?'　<span class="chip rev">已停用</span>':''}</div></div>${S.readOnly?'':`<div class="btns"><button class="btn" data-act="catSheet" data-id="${c.id}">改名</button><button class="btn" data-act="catToggle" data-id="${c.id}">${c.archived?'啟用':'停用'}</button></div>`}</div>`).join('')}</div>
+  <section class="card"><h3>支出分類</h3><div class="list">${cats.map(c=>`<div class="row" style="cursor:default"><div class="main"><div class="t" style="${c.archived?'opacity:.5':''}">${c.icon} ${esc(c.name)}${c.archived?'　<span class="chip rev">已停用</span>':''}</div></div>${S.readOnly?'':`<div class="btns"><button class="btn" data-act="catSheet" data-id="${c.id}">編輯</button><button class="btn" data-act="catToggle" data-id="${c.id}">${c.archived?'啟用':'停用'}</button></div>`}</div>`).join('')}</div>
     ${S.readOnly?'':'<button class="btn" style="margin-top:10px" data-act="catSheet">＋ 新增分類</button>'}<p class="hint" style="margin:8px 0 0">改名不會改動已記錄的帳目。</p></section>
   <section class="card"><h3>資料匯出與備份</h3><div class="btns"><button class="btn" data-act="exportEntries">匯出明細（CSV）</button><button class="btn" data-act="exportSettle">匯出結算（CSV）</button><button class="btn" data-act="exportJson">完整備份（JSON）</button></div>
     <p class="hint" style="margin:8px 0 0">CSV 可用 Excel 或 Google 試算表開啟；JSON 是完整備份，可匯回帳本。</p>
@@ -642,7 +653,7 @@ function addSheet(){
   <form id="addForm" novalidate>
   <div class="field"><label for="f-amt">金額</label><div class="amtbox"><span>NT$</span><input id="f-amt" inputmode="numeric" autocomplete="off" placeholder="輸入金額" value="${esc(f.amt)}"></div></div>
   <div class="q">${q}</div><div class="opts">${opts}</div>
-  ${f.mode==='spend'?`<div class="field"><span class="fl">分類</span><div class="cats">${cats.map(c=>`<button type="button" data-act="fcat" data-id="${esc(c.name)}" aria-pressed="${f.cat===c.name}">${esc(c.name)}</button>`).join('')}</div></div>`:''}
+  ${f.mode==='spend'?`<div class="field"><span class="fl">分類</span><div class="cattiles">${cats.map(c=>`<button type="button" data-act="fcat" data-id="${esc(c.name)}" aria-pressed="${f.cat===c.name}"><span class="em">${c.icon}</span><span>${esc(c.name)}</span></button>`).join('')}</div></div>`:''}
   <div class="field"><label for="f-note">${f.mode==='gift'?'買了什麼':f.mode==='in'&&f.src==='ext'?'收入名稱（例如：育兒津貼）':'品項或備註'}</label><input class="inp" id="f-note" maxlength="80" autocomplete="off" value="${esc(f.note)}" placeholder="${f.mode==='spend'?'例如：全聯買菜':''}"></div>
   <div class="field"><label for="f-date">日期</label><input class="inp" type="date" id="f-date" value="${esc(f.date)}"></div>
   ${f.replaces?`<div class="field"><label for="f-reason">更正原因（必填）</label><input class="inp" id="f-reason" maxlength="80" value="${esc(f.reason)}" placeholder="例如：金額打錯"></div>`:''}
@@ -807,8 +818,9 @@ function ratioSheet(){const r=currentRatio();return head('調整出資比例')+`
   <button class="btn primary block" style="margin-top:14px" data-act="doRatio" id="r-submit">儲存新比例</button>`}
 function keeperSheet(){return head('變更公費保管人')+`<p class="hint" style="margin-top:0">只影響之後產生的結算單如何抵銷報銷款；已出的結算單不變。</p>
   <div class="seg" style="margin-top:8px">${['H','W'].map(r=>`<button data-act="doKeeper" data-id="${r}" aria-pressed="${keeper()===r}">${ROLE[r]}保管</button>`).join('')}</div>`}
-function catSheet(id){const c=id?catList().find(x=>x.id===id):null;return head(c?'分類改名':'新增分類')+`
-  <div class="field"><label for="c-name">分類名稱</label><input class="inp" id="c-name" maxlength="12" value="${esc(c?c.name:'')}"></div>
+function catSheet(id){const c=id?catList().find(x=>x.id===id):null;if(!S.sheet.icon)S.sheet.icon=c?c.icon:'🏷️';return head(c?'編輯分類':'新增分類')+`
+  <div class="field"><label for="c-name">分類名稱</label><input class="inp" id="c-name" maxlength="12" value="${esc(S.sheet.nameDraft??(c?c.name:''))}"></div>
+  <div class="field"><span class="fl">圖示</span><div class="iconpick">${ICON_CHOICES.map(e=>`<button type="button" data-act="pickIcon" data-id="${e}" aria-pressed="${S.sheet.icon===e}">${e}</button>`).join('')}</div></div>
   <button class="btn primary block" style="margin-top:14px" data-act="doCat" data-id="${id||''}">儲存</button>`}
 
 /* ============ 匯出 ============ */
@@ -873,10 +885,11 @@ const ACT={
   keeperSheet:()=>openSheet({kind:'keeper'}),
   doKeeper:async id=>{if(S.busy)return;S.busy=true;try{await put('config/book',{keeper:id,updatedAt:Date.now(),by:S.role});closeSheet();toast('保管人已改為'+ROLE[id])}catch(e){toast(errMsg(e))}finally{S.busy=false;render()}},
   catSheet:id=>openSheet({kind:'cat',id}),
+  pickIcon:e=>{S.sheet.nameDraft=$('c-name').value;S.sheet.icon=e;renderSheet()},
   doCat:async id=>{const name=$('c-name').value.trim();if(!name){toast('請輸入名稱');return}const list=catList();if(list.some(c=>c.name===name&&c.id!==id)){toast('已有同名分類');return}if(S.busy)return;S.busy=true;
     const c=id?list.find(x=>x.id===id):null;
-    try{await put('categories/'+(id||newId('c')),{name,order:c?c.order:list.length+100,archived:c?c.archived:false});closeSheet();toast('分類已儲存')}catch(e){toast(errMsg(e))}finally{S.busy=false;render()}},
-  catToggle:async id=>{const c=catList().find(x=>x.id===id);if(S.busy)return;S.busy=true;try{await put('categories/'+id,{name:c.name,order:c.order,archived:!c.archived})}catch(e){toast(errMsg(e))}finally{S.busy=false;render()}},
+    try{await put('categories/'+(id||newId('c')),{name,icon:S.sheet.icon||'🏷️',order:c?c.order:list.length+100,archived:c?c.archived:false});closeSheet();toast('分類已儲存')}catch(e){toast(errMsg(e))}finally{S.busy=false;render()}},
+  catToggle:async id=>{const c=catList().find(x=>x.id===id);if(S.busy)return;S.busy=true;try{await put('categories/'+id,{name:c.name,icon:c.icon,order:c.order,archived:!c.archived})}catch(e){toast(errMsg(e))}finally{S.busy=false;render()}},
   exportEntries:()=>exportEntries(),
   exportSettle:()=>exportSettle(),
   exportJson:()=>exportJson(),
@@ -896,7 +909,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.sheet)closeShee
 window.addEventListener('error',e=>toast('發生錯誤：'+(e.message||'未知')));
 window.addEventListener('unhandledrejection',e=>{const r=e.reason;toast('發生錯誤：'+((r&&(r.code||r.message))||'未知'))});
 /* ============ 自動更新：發現新版就換成新網址載入，避開手機暫存 ============ */
-const APP_VERSION='202610272045';
+const APP_VERSION='202610272055';
 async function checkUpdate(){try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
   if(j.v&&j.v!==APP_VERSION&&!S.sheet){location.replace(location.pathname+'?v='+j.v)}}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
